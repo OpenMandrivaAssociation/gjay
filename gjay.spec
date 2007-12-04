@@ -1,7 +1,7 @@
 Name: 	 	gjay
 Summary: 	Automated music manager for DJ applications
 Version: 	0.2.8.3
-Release: 	3mdk
+Release: 	 %mkrel 3
 
 Source:		%{name}-%{version}.tar.bz2
 Patch0:     gjay-0.2.8.3-gcc34.patch.bz2
