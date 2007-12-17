@@ -8,7 +8,7 @@ Patch0:     gjay-0.2.8.3-gcc34.patch.bz2
 URL:		http://gjay.sourceforge.net/
 License:	GPL
 Group:		Sound
-BuildRequires:	gtk+1.2-devel libvorbis-devel gsl-devel xmms-devel pkgconfig
+BuildRequires:	gtk+1.2-devel libvorbis-devel gsl-devel xmms-devel pkgconfig gtk2-devel
 Requires:	mp3info mpg321 vorbis-tools xmms
 
 %description
