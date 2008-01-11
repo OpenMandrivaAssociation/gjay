@@ -33,15 +33,15 @@ mkdir -p $RPM_BUILD_ROOT/%_datadir/%name/icons
 strip $RPM_BUILD_ROOT/%_bindir/%name
 
 #menu
-mkdir -p $RPM_BUILD_ROOT%{_menudir}
-cat << EOF > $RPM_BUILD_ROOT%{_menudir}/%{name}
-?package(%{name}): \
-	command="%{name}" \
-	icon="sound_section.png" \
-	needs="x11" \
-	title="GJay" \
-	longtitle="DJ Collection Manager" \
-	section="Multimedia/Sound"
+mkdir -p $RPM_BUILD_ROOT%{_datadir}/applications/
+cat << EOF > %buildroot%{_datadir}/applications/mandriva-%{name}.desktop
+[Desktop Entry]
+Type=Application
+Exec=%{name}
+Icon=sound_section
+Name=GJay
+Comment=DJ Collection Manager
+Categories=Audio;
 EOF
 
 %clean
@@ -59,5 +59,5 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/%name
 %{_datadir}/%name
 %{_mandir}/man1/*
-%{_menudir}/%name
+%{_datadir}/applications/mandriva-%name.desktop
 
