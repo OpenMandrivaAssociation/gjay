@@ -21,6 +21,7 @@ BuildRequires:	libvorbis-devel
 BuildRequires:	gsl-devel
 BuildRequires:	audacious-devel
 BuildRequires:	gtk2-devel
+BuildRequires:	libdbus-glib-1-devel
 Requires:	mp3info
 Requires:	mpg321
 Requires:	vorbis-tools
