@@ -1,7 +1,7 @@
 Name:		gjay
 Summary:	Automated music manager for DJ applications
 Version: 	0.2.8.3
-Release: 	%mkrel 4
+Release: 	%mkrel 5
 Source0:	%{name}-%{version}.tar.bz2
 Patch0:		gjay-0.2.8.3-gcc34.patch
 # Fix build with GCC 4 by removing unnecessary conflicting declarations
