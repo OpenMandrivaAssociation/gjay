@@ -1,0 +1,38 @@
+--- ./prefs.c.tv	2004-08-18 21:27:12.746116202 +0200
++++ ./prefs.c	2004-08-18 21:27:29.312344242 +0200
+@@ -336,6 +336,7 @@
+                 prefs.rating_cutoff = TRUE;
+             break;
+         default:
++			break;
+         }
+     }
+ }    
+@@ -422,6 +423,7 @@
+         prefs.time = atoi(buffer);
+         break;
+     default:
++        break;
+     }
+     *element = PE_LAST;
+ }
+--- ./ui.c.tv	2004-08-18 21:27:37.352455028 +0200
++++ ./ui.c	2004-08-18 21:27:45.694570052 +0200
+@@ -261,6 +261,7 @@
+         break;
+     default:
+         // Do nothing
++        break;
+     }    
+     return TRUE;
+ }
+--- ./analysis.c.tv	2004-08-18 21:28:04.105824187 +0200
++++ ./analysis.c	2004-08-18 21:28:13.896959490 +0200
+@@ -333,6 +333,7 @@
+         break;
+     default:
+         // Do nothing
++        break;
+     }
+     return TRUE;
+ }

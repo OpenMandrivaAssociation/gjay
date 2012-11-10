@@ -1,0 +1,564 @@
+diff -uN gjay-0.2.8.3/changelog gjay-0.2.8.3-audacious/changelog
+--- gjay-0.2.8.3/changelog	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/changelog	2008-08-07 23:44:33.000000000 -0700
+@@ -29,7 +29,7 @@
+ - UI:
+    - Added menubar, moved prefs and about into there
+    - Improved directory selection dialog
+-   - Jump to song currently playing in XMMS 
++   - Jump to song currently playing in Audacious 
+ 0.2.6 - January 19, 2003
+ - Features:
+    - Display highlight icon next to directories containing new songs (those
+diff -uN gjay-0.2.8.3/constants.h gjay-0.2.8.3-audacious/constants.h
+--- gjay-0.2.8.3/constants.h	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/constants.h	2008-08-07 23:44:33.000000000 -0700
+@@ -48,7 +48,7 @@
+                    "\t-p          :  Generate a playlist\n" \
+                    "\nPlaylist options:\n" \
+                    "\t-u          :  Display list in m3u format\n" \
+-                   "\t-x          :  Use XMMS to play generated playlist\n" \
++                   "\t-x          :  Use Audacious to play generated playlist\n" \
+                    "\t-l length   :  Length of playlist, in minutes\n" \
+                    "\t-f filename :  Start playlist at a particular file\n" \
+                    "\t-c color    :  Start playlist at color, either a hex value or by name.\n" \
+Common subdirectories: gjay-0.2.8.3/doc and gjay-0.2.8.3-audacious/doc
+diff -uN gjay-0.2.8.3/gjay_audacious.c gjay-0.2.8.3-audacious/gjay_audacious.c
+--- gjay-0.2.8.3/gjay_audacious.c	1969-12-31 16:00:00.000000000 -0800
++++ gjay-0.2.8.3-audacious/gjay_audacious.c	2008-08-08 02:36:12.000000000 -0700
+@@ -0,0 +1,121 @@
++/**
++ * GJay, copyright (c) 2002 Chuck Groom
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation; either version 1, or (at
++ * your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
++ * USA
++ */
++
++#include <stdio.h>
++#include <sys/types.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <audacious/audctrl.h>
++#include <audacious/dbus.h>
++#include "gjay.h" 
++#include "gjay_audacious.h"
++#include "songs.h" 
++
++DBusGProxy *audacious_session = NULL;
++
++static DBusGProxy *get_audacious_session(void)
++{
++    DBusGConnection *connection = NULL;
++    DBusGProxy *session = NULL;
++    GError *error = NULL;
++    connection = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
++    g_clear_error(&error);
++
++    audacious_session = dbus_g_proxy_new_for_name(connection, AUDACIOUS_DBUS_SERVICE,
++                                        AUDACIOUS_DBUS_PATH,
++                                        AUDACIOUS_DBUS_INTERFACE);
++
++    g_clear_error(&error);
++    return audacious_session;
++}
++
++void join_or_start_audacious ( void ) {
++    /* Try to automatically find audacious session */
++    get_audacious_session();
++    if (!audacious_remote_is_running(audacious_session)) {  /* no session found */
++        switch( fork() ) {
++        case -1:
++            perror("fork");
++            _exit(1);
++            
++        case 0:
++            execlp("audacious", "audacious", NULL);
++            fprintf(stderr, "audacious not found!\n");
++            return;
++        }
++    }
++}
++
++
++void play_song ( song * s ) {
++    GList * list = NULL;
++    join_or_start_audacious();
++    if (audacious_session == NULL)
++        return;
++    list = g_list_append(NULL, g_strconcat("file://",strdup_to_latin1(s->path), NULL));
++    play_files(list);
++    g_free((gchar *) list->data);
++    g_list_free(list);
++}
++
++
++void play_songs ( GList * slist ) {
++    GList * list = NULL, * ll;
++    join_or_start_audacious();
++    if (audacious_session == NULL)
++        return;
++    for (; slist; slist = g_list_next(slist)) {
++        list = g_list_append(list, g_strconcat("file://",strdup_to_latin1(SONG(slist)->path), NULL));
++    } 
++    play_files(list);
++    for (ll = list; ll; ll = g_list_next(ll)) 
++        g_free((gchar *) ll->data);
++    g_list_free(list);
++}
++
++
++void play_files ( GList * list) {
++    if (list) {
++        audacious_remote_playlist_clear(audacious_session);
++        audacious_remote_playlist_add(audacious_session, list);
++        audacious_remote_play(audacious_session);
++    }
++}
++
++
++song * get_current_audacious_song (void) {
++    gchar * path;
++    gint pos;
++    song * s = NULL;
++    pos = audacious_remote_get_playlist_pos(audacious_session);
++    path = audacious_remote_get_playlist_file(audacious_session, pos);    
++    s = g_hash_table_lookup(song_name_hash, path);
++    free(path);
++    return s;
++}
++
++
++gboolean audacious_is_running(void) {
++    get_audacious_session();
++    if (audacious_remote_is_running(audacious_session)) {
++        return TRUE;
++    }
++    return FALSE;
++}
++
+diff -uN gjay-0.2.8.3/gjay_audacious.h gjay-0.2.8.3-audacious/gjay_audacious.h
+--- gjay-0.2.8.3/gjay_audacious.h	1969-12-31 16:00:00.000000000 -0800
++++ gjay-0.2.8.3-audacious/gjay_audacious.h	2008-08-07 23:44:33.000000000 -0700
+@@ -0,0 +1,33 @@
++/**
++ * GJay, copyright (c) 2002-3 Chuck Groom
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation; either version 1, or (at
++ * your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
++ * USA
++ */
++
++
++#ifndef _GJAY_Audacious_H_
++#define _GJAY_Audacious_H_
++
++#include "gjay.h" 
++
++void        join_or_start_audacious    ( void );
++void        play_song             ( song * s );
++void        play_songs            ( GList * slist );
++void        play_files            ( GList * list);
++song *      get_current_audacious_song ( void );
++gboolean    audacious_is_running       ( void );
++
++#endif /* _GJAY_Audacious_H_ */
+diff -uN gjay-0.2.8.3/gjay.c gjay-0.2.8.3-audacious/gjay.c
+--- gjay-0.2.8.3/gjay.c	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/gjay.c	2008-08-07 23:44:33.000000000 -0700
+@@ -40,7 +40,7 @@
+ #include <string.h>
+ #include <ctype.h>
+ #include "gjay.h"
+-#include "gjay_xmms.h"
++#include "gjay_audacious.h"
+ #include "analysis.h"
+ #include "ipc.h"
+ #include "playlist.h"
+@@ -75,7 +75,7 @@
+     struct stat stat_buf;
+     FILE * f;
+     gint i, k, hex;
+-    gboolean m3u_format, playlist_in_xmms;
++    gboolean m3u_format, playlist_in_audacious;
+ 
+     srand(time(NULL));
+     
+@@ -83,7 +83,7 @@
+     verbosity = 0;    
+     skip_verify = 0;
+     m3u_format = FALSE;
+-    playlist_in_xmms = FALSE;
++    playlist_in_audacious = FALSE;
+     load_prefs();
+     
+     for (i = 0; i < argc; i++) {
+@@ -149,7 +149,7 @@
+                 if (argv[i][k] == 'u')
+                     m3u_format = TRUE;
+                 if (argv[i][k] == 'x')
+-                    playlist_in_xmms = TRUE;
++                    playlist_in_audacious = TRUE;
+                 if (argv[i][k] == 'p') {
+                     prefs.start_color = FALSE;
+                     mode = PLAYLIST;
+@@ -221,8 +221,8 @@
+    }
+ 
+     if (mode == UI) {
+-        if (!app_exists("xmms")) {
+-            fprintf(stderr, "GJay strongly suggests xmms\n"); 
++        if (!app_exists("audacious")) {
++            fprintf(stderr, "GJay strongly suggests audacious\n"); 
+         } 
+ 
+         gtk_init (&argc, &argv);
+@@ -283,8 +283,8 @@
+             SONG(list)->in_tree = TRUE;
+         }
+         list = generate_playlist(prefs.time);
+-        if (playlist_in_xmms) {
+-            join_or_start_xmms();
++        if (playlist_in_audacious) {
++            join_or_start_audacious();
+             play_songs(list);
+         } else {
+             write_playlist(list, stdout, m3u_format);
+diff -uN gjay-0.2.8.3/gjay_xmms.c gjay-0.2.8.3-audacious/gjay_xmms.c
+--- gjay-0.2.8.3/gjay_xmms.c	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/gjay_xmms.c	1969-12-31 16:00:00.000000000 -0800
+@@ -1,129 +0,0 @@
+-/**
+- * GJay, copyright (c) 2002 Chuck Groom
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public License as
+- * published by the Free Software Foundation; either version 1, or (at
+- * your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+- * USA
+- */
+-
+-#include <stdio.h>
+-#include <sys/types.h>
+-#include <unistd.h>
+-#include <stdlib.h>
+-#include <xmms/xmmsctrl.h>
+-#include "gjay.h" 
+-#include "gjay_xmms.h"
+-#include "songs.h" 
+-
+-static gint xmms_session = -1;
+-
+-#define MAX_XMMS_SESSION 16
+-
+-
+-gint get_xmms_session (void) {
+-    for( xmms_session = 0 ; xmms_session < MAX_XMMS_SESSION ; xmms_session++ )
+-        if ( xmms_remote_is_running( xmms_session ) )
+-            return xmms_session;
+-    return xmms_session;
+-}
+-
+-
+-void join_or_start_xmms ( void ) {
+-    unsigned int tries;
+-    /* Try to automatically find xmms session */
+-    get_xmms_session();
+-    
+-    if (xmms_session == MAX_XMMS_SESSION) {  /* no session found */
+-        switch( fork() ) {
+-        case -1:
+-            perror("fork");
+-            _exit(1);
+-            
+-        case 0:
+-            execlp("xmms", "xmms", NULL);
+-            fprintf(stderr, "xmms not found!\n");
+-            return;
+-            
+-        default:
+-            for( tries = 0 ; tries < 10 ; tries++ ) {
+-                usleep( 500000 ); /* in usec */
+-                if (get_xmms_session() < MAX_XMMS_SESSION)
+-                    return;
+-            }
+-            xmms_session = -1;
+-            return;
+-        }
+-    }
+-}
+-
+-
+-void play_song ( song * s ) {
+-    GList * list = NULL;
+-    join_or_start_xmms();
+-    if (xmms_session < 0)
+-        return;
+-    list = g_list_append(NULL, strdup_to_latin1(s->path));
+-    play_files(list);
+-    g_free((gchar *) list->data);
+-    g_list_free(list);
+-}
+-
+-
+-void play_songs ( GList * slist ) {
+-    GList * list = NULL, * ll;
+-    join_or_start_xmms();
+-    if (xmms_session < 0)
+-        return;
+-    for (; slist; slist = g_list_next(slist)) {
+-        list = g_list_append(list, strdup_to_latin1(SONG(slist)->path));
+-    } 
+-    play_files(list);
+-    for (ll = list; ll; ll = g_list_next(ll)) 
+-        g_free((gchar *) ll->data);
+-    g_list_free(list);
+-}
+-
+-
+-void play_files ( GList * list) {
+-    if (list) {
+-        xmms_remote_playlist_clear(xmms_session);
+-        xmms_remote_playlist_add(xmms_session, list);
+-        xmms_remote_play(xmms_session);
+-    }
+-}
+-
+-
+-song * get_current_xmms_song (void) {
+-    gchar * path;
+-    gint pos;
+-    song * s = NULL;
+-    get_xmms_session();
+-    if (xmms_session < MAX_XMMS_SESSION) {
+-        pos = xmms_remote_get_playlist_pos(xmms_session);
+-        path = xmms_remote_get_playlist_file(xmms_session, pos);    
+-        s = g_hash_table_lookup(song_name_hash, path);
+-        free(path);
+-    }
+-    return s;
+-}
+-
+-
+-gboolean xmms_is_running(void) {
+-    get_xmms_session();
+-    if ((xmms_session != -1) && (xmms_session < MAX_XMMS_SESSION)) {
+-        return TRUE;
+-    }
+-    return FALSE;
+-}
+-
+diff -uN gjay-0.2.8.3/gjay_xmms.h gjay-0.2.8.3-audacious/gjay_xmms.h
+--- gjay-0.2.8.3/gjay_xmms.h	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/gjay_xmms.h	1969-12-31 16:00:00.000000000 -0800
+@@ -1,33 +0,0 @@
+-/**
+- * GJay, copyright (c) 2002-3 Chuck Groom
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public License as
+- * published by the Free Software Foundation; either version 1, or (at
+- * your option) any later version.
+- *
+- * This program is distributed in the hope that it will be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+- * General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+- * USA
+- */
+-
+-
+-#ifndef _GJAY_XMMS_H_
+-#define _GJAY_XMMS_H_
+-
+-#include "gjay.h" 
+-
+-void        join_or_start_xmms    ( void );
+-void        play_song             ( song * s );
+-void        play_songs            ( GList * slist );
+-void        play_files            ( GList * list);
+-song *      get_current_xmms_song ( void );
+-gboolean    xmms_is_running       ( void );
+-
+-#endif /* _GJAY_XMMS_H_ */
+Common subdirectories: gjay-0.2.8.3/icons and gjay-0.2.8.3-audacious/icons
+diff -uN gjay-0.2.8.3/Makefile gjay-0.2.8.3-audacious/Makefile
+--- gjay-0.2.8.3/Makefile	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/Makefile	2008-08-07 23:44:33.000000000 -0700
+@@ -2,7 +2,7 @@
+ CC = gcc
+ LINK = $(CC)
+ CFLAGS = -g -Wall `pkg-config --cflags gtk+-2.0`
+-LFLAGS = `pkg-config --libs gtk+-2.0` -lxmms -lgsl -lgslcblas -lm -lpthread
++LFLAGS = `pkg-config --libs gtk+-2.0` -laudclient -lgsl -lgslcblas -lm -lpthread
+ TARGET = gjay
+ 
+ HEADERS = \
+@@ -32,7 +32,7 @@
+ 	ui_colorwheel.o \
+ 	ui_colorbox.o \
+ 	ui_menubar.o \
+-	gjay_xmms.o \
++	gjay_audacious.o \
+ 	analysis.o \
+ 	playlist.o \
+ 	vorbis.o \
+diff -uN gjay-0.2.8.3/README gjay-0.2.8.3-audacious/README
+--- gjay-0.2.8.3/README	2004-01-21 23:25:11.000000000 -0800
++++ gjay-0.2.8.3-audacious/README	2008-08-07 23:44:33.000000000 -0700
+@@ -29,23 +29,23 @@
+ GJay uses the following programs:
+   mpg321
+   ogg123
+-  xmms
++  audacious
+ 
+ GJay depends on the following libraries:
+   libgtk-2.0
+   libgsl
+   libgslcblas
+-  libxmms
++  libaudacious
+ 
+ GJay supports ogg if it's there (a soft dependancy):
+   libvorbis
+   libvorbisfile
+   
+-To build GJay, you'll need the header files for libgsl, xmms, and Gtk2
++To build GJay, you'll need the header files for libgsl, audacious, and Gtk2
+ 
+ The relevant Debain packages are:
+-mpg321 vorbis-tools xmms
++mpg321 vorbis-tools audacious
+ libgtk2.0 libgsl0 libvorbis (Debian keeps mucking about with this name...)
+-libgtk1.2-dev xmms-dev libgsl0-dev
++libgtk1.2-dev audacious-dev libgsl0-dev
+ 
+ 
+diff -uN gjay-0.2.8.3/songs.c gjay-0.2.8.3-audacious/songs.c
+--- gjay-0.2.8.3/songs.c	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/songs.c	2008-08-07 23:44:33.000000000 -0700
+@@ -27,7 +27,7 @@
+ #include <math.h> 
+ #include <ctype.h>
+ #include "gjay.h"
+-#include "gjay_xmms.h"
++#include "gjay_audacious.h"
+ #include "analysis.h"
+ #include "mp3.h"
+ #include "vorbis.h"
+diff -uN gjay-0.2.8.3/ui_menubar.c gjay-0.2.8.3-audacious/ui_menubar.c
+--- gjay-0.2.8.3/ui_menubar.c	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/ui_menubar.c	2008-08-07 23:44:33.000000000 -0700
+@@ -18,16 +18,16 @@
+  */
+ 
+ #include "gjay.h"
+-#include "gjay_xmms.h"
++#include "gjay_audacious.h"
+ #include "ui.h"
+ 
+ 
+-static void menuitem_xmms (void);
++static void menuitem_audacious (void);
+ static void menuitem_quit (void);
+ 
+ static GtkItemFactoryEntry menu_items[] = {
+     { "/_Application", NULL, NULL, 0, "<Branch>" },
+-    { "/Application/_Go to current XMMS song", "<control>G", menuitem_xmms, 
++    { "/Application/_Go to current Audacious song", "<control>G", menuitem_audacious, 
+       0, "<Item>" },
+     { "/Application/_About...", NULL, show_about_window, 0, "<Item>" },
+     { "/Application/_Preferences...", NULL, show_prefs_window, 0, "<Item>" },
+@@ -48,19 +48,19 @@
+ }
+ 
+ 
+-void menuitem_xmms (void) {
++void menuitem_audacious (void) {
+     song * s;
+     gchar * msg; 
+     GtkWidget * dialog;
+ 
+-    s = get_current_xmms_song();
++    s = get_current_audacious_song();
+     if (s) {
+         explore_select_song(s);
+     } else {
+-        if (xmms_is_running()) {
++        if (audacious_is_running()) {
+             msg = "Sorry, GJay doesn't appear to know that song";
+         } else {
+-            msg = "Sorry, unable to connect to XMMS.\nIs XMMS running?";
++            msg = "Sorry, unable to connect to Audacious.\nIs Audacious running?";
+         }
+         dialog = gtk_message_dialog_new(
+             GTK_WINDOW(window),
+diff -uN gjay-0.2.8.3/ui_playlist_view.c gjay-0.2.8.3-audacious/ui_playlist_view.c
+--- gjay-0.2.8.3/ui_playlist_view.c	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/ui_playlist_view.c	2008-08-07 23:44:33.000000000 -0700
+@@ -22,7 +22,7 @@
+ #include <sys/stat.h>
+ #include <string.h>
+ #include "gjay.h"
+-#include "gjay_xmms.h"
++#include "gjay_audacious.h"
+ #include "ui.h"
+ #include "playlist.h"
+ 
+diff -uN gjay-0.2.8.3/ui_selection_view.c gjay-0.2.8.3-audacious/ui_selection_view.c
+--- gjay-0.2.8.3/ui_selection_view.c	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3-audacious/ui_selection_view.c	2008-08-07 23:44:33.000000000 -0700
+@@ -23,7 +23,7 @@
+ #include <math.h>
+ #include <string.h>
+ #include "gjay.h"
+-#include "gjay_xmms.h"
++#include "gjay_audacious.h"
+ #include "ui.h"
+ #include "rgbhsv.h"
+ 
+@@ -107,7 +107,7 @@
+ 
+     play = gtk_image_new_from_pixbuf(pixbufs[PM_BUTTON_PLAY]);
+     gtk_tooltips_set_tip (tips, event_box,
+-                          "Play the selected songs in XMMS", "");
++                          "Play the selected songs in Audacious", "");
+     gtk_container_add (GTK_CONTAINER(event_box), play);
+     gtk_widget_set_events (event_box, GDK_BUTTON_PRESS_MASK);
+     gtk_signal_connect (GTK_OBJECT(event_box), 

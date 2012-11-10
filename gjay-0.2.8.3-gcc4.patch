@@ -1,0 +1,20 @@
+--- gjay-0.2.8.3/gjay.h	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3/gjay.h.new	2008-08-07 22:15:06.000000000 -0700
+@@ -43,7 +43,6 @@
+ 
+ /* State */
+ extern gjay_mode mode;
+-extern gint      xmms_session;
+ 
+ /* User options */
+ extern gint      verbosity;
+--- gjay-0.2.8.3/analysis.h	2004-01-19 21:12:25.000000000 -0800
++++ gjay-0.2.8.3/analysis.h.new	2008-08-07 22:17:23.000000000 -0700
+@@ -73,7 +73,6 @@
+ 
+ 
+ /* Mutex lock for analysis data */
+-extern song          * analyze_song;
+ extern int             analyze_percent;
+ 
+ /* Analysis.c */
