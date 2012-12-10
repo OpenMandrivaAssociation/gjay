@@ -1,7 +1,9 @@
+%define debug_package %{nil}
+
 Name:		gjay
 Summary:	Automated music manager for DJ applications
 Version: 	0.2.8.3
-Release: 	%mkrel 6
+Release: 	7
 Source0:	%{name}-%{version}.tar.bz2
 Patch0:		gjay-0.2.8.3-gcc34.patch
 # Fix build with GCC 4 by removing unnecessary conflicting declarations
@@ -16,12 +18,11 @@ URL:		http://gjay.sourceforge.net/
 # Explicitly states v1 or later
 License:	GPL+
 Group:		Sound
-BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 BuildRequires:	libvorbis-devel
 BuildRequires:	gsl-devel
 BuildRequires:	audacious-devel
 BuildRequires:	gtk2-devel
-BuildRequires:	libdbus-glib-1-devel
+BuildRequires:	pkgconfig(dbus-glib-1)
 Requires:	mp3info
 Requires:	mpg321
 Requires:	vorbis-tools
@@ -46,9 +47,10 @@ application, or run GJay as a standalone command-line utility.
 
 # Needs to use both GTK+ and dbus-glib libs and includes, not just
 # GTK+ - AdamW 2008/08
-sed -i -e 's,gtk+-2.0,gtk+-2.0 dbus-glib-1,g' Makefile
+sed -i -e 's,gtk+-2.0`,gtk+-2.0 dbus-glib-1` -ldl,g' Makefile
 
 %build
+export LDFLAGS="-ldl"
 %make
 										
 %install
@@ -93,3 +95,54 @@ rm -rf %{buildroot}
 %{_mandir}/man1/*
 %{_datadir}/applications/mandriva-%{name}.desktop
 
+
+
+%changelog
+* Fri Dec 10 2010 Oden Eriksson <oeriksson@mandriva.com> 0.2.8.3-6mdv2011.0
++ Revision: 618952
+- the mass rebuild of 2010.0 packages
+
+* Fri Sep 04 2009 Thierry Vignaud <tv@mandriva.org> 0.2.8.3-5mdv2010.0
++ Revision: 429207
+- rebuild
+
+* Fri Aug 08 2008 Adam Williamson <awilliamson@mandriva.org> 0.2.8.3-4mdv2009.0
++ Revision: 267988
+- br libdbus-glib-1-devel
+- clean up and modernize menu entry
+- add dbus-glib libs and includes (build breaks without)
+- manual suggest for libvorbis as it doesn't get auto-generated
+- new license policy
+- add dlopen.patch: from upstream CVS, avoids runtime dependency on -devel
+- add audacious.patch: port from xmms to audacious, so avoid GTK+ 1.2 deps
+- add gcc4.patch to fix build with GCC 4+
+- decompress the gcc3 patch
+- clean spec (spacing, variable names, tabs)
+
+  + Thierry Vignaud <tv@mandriva.org>
+    - rebuild
+    - fix no-buildroot-tag
+    - auto convert menu to XDG
+    - BR gtk2-devel
+    - kill re-definition of %%buildroot on Pixel's request
+    - use %%mkrel
+    - import gjay
+
+  + Pixel <pixel@mandriva.com>
+    - rpm filetriggers deprecates update_menus/update_scrollkeeper/update_mime_database/update_icon_cache/update_desktop_database/post_install_gconf_schemas
+
+
+* Wed Aug 18 2004 Thierry Vignaud <tvignaud@mandrakesoft.com> 0.2.8.3-3mdk
+- patch 0: fix compiling with gcc-3.4
+
+* Wed Aug 18 2004 Thierry Vignaud <tvignaud@mandrakesoft.com> 0.2.8.3-2mdk
+- fix typo in menu entry (Arpad Biro <biro_arpad@yahoo.com>)
+
+* Mon Feb 16 2004 Austin Acton <austin@mandrake.org> 0.2.8.3-1mdk
+- 0.2.8.3
+
+* Thu Feb 12 2004 David Baudens <baudens@mandrakesoft.com> 0.2.6-2mdk
+- Fix menu
+
+* Mon Oct 6 2003 Austin Acton <aacton@yorku.ca> 0.2.6-1mdk
+- initial package
