@@ -1,0 +1,45 @@
+diff -urN gjay-0.3.2/play_common.c gjay-0.3.2-patched/play_common.c
+--- gjay-0.3.2/play_common.c	2011-04-03 17:23:25.000000000 +1100
++++ gjay-0.3.2-patched/play_common.c	2014-02-25 21:56:55.000000000 +1100
+@@ -98,7 +98,7 @@
+         GTK_DIALOG_DESTROY_WITH_PARENT,
+         GTK_MESSAGE_QUESTION,
+         GTK_BUTTONS_YES_NO,
+-        msg);
++        "%s", msg);
+     result = gtk_dialog_run(GTK_DIALOG(dialog));
+     gtk_widget_destroy(dialog);
+     g_free(msg);
+@@ -112,7 +112,7 @@
+             GTK_DIALOG_DESTROY_WITH_PARENT,
+             GTK_MESSAGE_ERROR,
+             GTK_BUTTONS_CLOSE,
+-            msg);
++            "%s", msg);
+         gtk_dialog_run(GTK_DIALOG(dialog));
+         gtk_widget_destroy(dialog);
+         g_free(msg);
+diff -urN gjay-0.3.2/ui.c gjay-0.3.2-patched/ui.c
+--- gjay-0.3.2/ui.c	2011-03-21 21:29:28.000000000 +1000
++++ gjay-0.3.2-patched/ui.c	2014-02-25 21:55:53.000000000 +1100
+@@ -592,7 +592,7 @@
+       GTK_DIALOG_DESTROY_WITH_PARENT,
+       GTK_MESSAGE_ERROR,
+       GTK_BUTTONS_CLOSE,
+-      msg);
++      "%s", msg);
+   gtk_dialog_run(GTK_DIALOG(dialog));
+   gtk_widget_destroy(dialog);
+ }
+diff -urN gjay-0.3.2/ui_explore_view.c gjay-0.3.2-patched/ui_explore_view.c
+--- gjay-0.3.2/ui_explore_view.c	2011-03-21 22:15:35.000000000 +1000
++++ gjay-0.3.2-patched/ui_explore_view.c	2014-02-25 21:56:23.000000000 +1100
+@@ -195,7 +195,7 @@
+     /* Check to see if the directory exists */
+     if (access(root_dir, R_OK | X_OK)) {
+         snprintf(buffer, BUFFER_SIZE, "Cannot acces the base directory '%s'! Maybe it moved? You can pick another directory in the prefs", root_dir);
+-        g_warning(buffer);
++        g_warning("%s", buffer);
+         return;
+     }    
+     if (iter_stack)
