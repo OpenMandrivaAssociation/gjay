@@ -1,7 +1,7 @@
 Summary:	Automated music manager for DJ applications
 Name:		gjay
 Version:	0.3.2
-Release:	1
+Release:	2
 License:	GPLv2+
 Group:		Sound
 Url:		http://gjay.sourceforge.net/
