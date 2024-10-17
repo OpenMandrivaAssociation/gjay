@@ -4,7 +4,7 @@ Version:	0.3.2
 Release:	2
 License:	GPLv2+
 Group:		Sound
-Url:		http://gjay.sourceforge.net/
+Url:		https://gjay.sourceforge.net/
 Source0:	%{name}-%{version}.tar.gz
 Patch0:		gjay-0.3.2-sfmt.patch
 BuildRequires:	pkgconfig(audacious)
