@@ -7,6 +7,11 @@ Group:		Sound
 Url:		https://gjay.sourceforge.net/
 Source0:	%{name}-%{version}.tar.gz
 Patch0:		gjay-0.3.2-sfmt.patch
+BuildRequires:	autoconf
+BuildRequires:	automake
+BuildRequires:	libtool-base
+BuildRequires:	slibtool
+BuildRequires:	make
 BuildRequires:	pkgconfig(audacious)
 BuildRequires:	pkgconfig(dbus-glib-1)
 BuildRequires:	pkgconfig(flac)
